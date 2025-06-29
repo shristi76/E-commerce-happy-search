@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🛒 Smart Image Search</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+</head>
+<body class="bg-blue-300 text-gray-900 animate__animated animate__fadeIn">
+
+  <!-- 🔝 NavBar -->
+  <nav class="bg-white shadow sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-red-600">Enjoy Your Shopping :)</h1>
+      <div class="flex items-center gap-4">
+        <a href="/cart" class="relative">
+          <span class="text-2xl">🛒</span>
+          <span id="cartCount" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">0</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-6xl mx-auto p-6">
+
+    <!-- 🔍 Search Form -->
+    <form method="GET" action="/" id="searchForm" class="flex flex-wrap gap-2 justify-center mb-4">
+      <input type="text" id="searchInput" name="q" value="<%= query %>" placeholder="Search images..." 
+        class="px-4 py-2 rounded-lg border border-gray-300 w-64 shadow-sm transition focus:ring focus:ring-blue-200" />
+      <button type="submit" 
+        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition hover:scale-105">Search</button>
+      <button type="button" onclick="startVoice()" title="Speak to search"
+        class="bg-yellow-400 hover:bg-yellow-500 text-black px-4 py-2 rounded-lg transition hover:scale-105">🎤</button>
+    </form>
+
+    <!-- 🤖 AI Suggest Form -->
+    <form method="POST" action="/ai-search" class="flex flex-wrap gap-2 justify-center mb-8">
+      <input type="text" name="description" placeholder="Describe what you're looking for..." 
+        class="px-4 py-2 rounded-lg border border-gray-300 w-72 shadow-sm transition focus:ring focus:ring-green-200" />
+      <button type="submit" 
+        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition hover:scale-105">AI Suggest</button>
+    </form>
+
+    <!-- 🔮 Suggestions -->
+    <% if (suggestions && suggestions.length > 0) { %>
+      <div class="bg-blue-50 p-6 rounded-lg shadow mb-8 max-w-2xl mx-auto animate__animated animate__fadeInUp">
+        <h3 class="text-xl font-semibold mb-2 text-blue-700">🔮 AI Suggestions</h3>
+        <ul class="list-disc list-inside text-gray-700 space-y-1">
+          <% suggestions.forEach(item => { %>
+            <li><%= item %></li>
+          <% }) %>
+        </ul>
+      </div>
+    <% } %>
+
+    <!-- 🖼️ Image Gallery -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <% if (images.length > 0) { %>
+        <% images.forEach(image => { %>
+          <div class="bg-white rounded-xl shadow p-4 text-center transition-transform transform hover:scale-105 hover:shadow-lg duration-300 animate__animated animate__zoomIn">
+            <img src="/images/<%= image.imageFile %>" alt="<%= image.productDisplayName %>" class="rounded-lg w-full h-48 object-cover mb-2" />
+            <p class="font-semibold"><%= image.productDisplayName %></p>
+            <p class="text-sm text-gray-600"><%= image.articleType %> | <%= image.baseColour %> | <%= image.usage %></p>
+            <button 
+              class="add-to-cart-btn mt-2 bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded transition hover:scale-105"
+              data-product='<%= JSON.stringify(image).replace(/'/g, "&apos;") %>'>
+              Add to Cart
+            </button>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <p class="col-span-full text-center text-red-500 font-semibold animate__animated animate__fadeIn">No results found.</p>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- ✅ Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-green-600 text-white px-4 py-2 rounded shadow-lg hidden">Added to Cart</div>
+
+  <!-- 🎤 Voice + Cart Script -->
+  <script>
+    function startVoice() {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("Voice recognition not supported.");
+        return;
+      }
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = 'en-IN';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.start();
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("searchInput").value = transcript;
+        document.getElementById("searchForm").submit();
+      };
+      recognition.onerror = function(err) {
+        alert("Voice error: " + err.error);
+      };
+    }
+
+    function addToCart(image) {
+      let cart = JSON.parse(localStorage.getItem('cart')) || [];
+      cart.push(image);
+      localStorage.setItem('cart', JSON.stringify(cart));
+      updateCartCount();
+      showToast("Added to Cart");
+    }
+
+    function updateCartCount() {
+      let cart = JSON.parse(localStorage.getItem('cart')) || [];
+      document.getElementById('cartCount').innerText = cart.length;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      toast.classList.add('animate__fadeInUp');
+      setTimeout(() => toast.classList.add('hidden'), 2000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateCartCount();
+      document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          try {
+            const data = btn.getAttribute('data-product').replace(/&apos;/g, "'");
+            const product = JSON.parse(data);
+            addToCart(product);
+          } catch (e) {
+            alert("Failed to add item to cart.");
+            console.error(e);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
