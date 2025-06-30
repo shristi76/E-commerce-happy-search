@@ -4,3 +4,5 @@ here i used,
 Database- Mongodb,
 API- gemini (ai integration),
 voice search integration
+
+DEMO -https://drive.google.com/file/d/1cTJNx3YX11dJL2ZKuuBuXmi-wV4YvCMp/view?usp=drivesdk
